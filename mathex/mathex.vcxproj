@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{9241648D-12A2-4B1B-8D10-286DE9B28622}</ProjectGuid>
+    <ProjectGuid>{F1389912-C57B-4693-8192-AB6ADCB37185}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>mathex</RootNamespace>
   </PropertyGroup>
@@ -76,16 +76,16 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\geometry.cpp" />
-    <ClCompile Include="..\src\mathex.cpp" />
-    <ClCompile Include="..\src\transform.cpp" />
-    <ClCompile Include="..\src\vecmath.cpp" />
+    <ClInclude Include="geometry.h" />
+    <ClInclude Include="mathex.h" />
+    <ClInclude Include="transform.h" />
+    <ClInclude Include="vecmath.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\geometry.h" />
-    <ClInclude Include="..\src\mathex.h" />
-    <ClInclude Include="..\src\transform.h" />
-    <ClInclude Include="..\src\vecmath.h" />
+    <ClCompile Include="geometry.cpp" />
+    <ClCompile Include="mathex.cpp" />
+    <ClCompile Include="transform.cpp" />
+    <ClCompile Include="vecmath.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
