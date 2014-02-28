@@ -15,39 +15,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="geometry.h">
+    <ClInclude Include="stdafx.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="mathex.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="transform.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="vecmath.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="arithmetic_helper.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="fixedp.h">
+    <ClInclude Include="targetver.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="geometry.cpp">
+    <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="mathex.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="transform.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="vecmath.cpp">
+    <ClCompile Include="unittest1.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

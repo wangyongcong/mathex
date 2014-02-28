@@ -2,6 +2,7 @@
 #define WYC_HEADER_FIXED
 
 #include <cstdint>
+#include "arithmetic_helper.h"
 
 namespace wyc
 {
@@ -58,8 +59,8 @@ struct extended_t<uint32_t> {
 // binary fixed point
 //	N: number of fraction digits
 //	T: underlying integral representation type
-template<unsigned N, typename T>
-class xfixed_binary
+template<uint8_t N, typename T>
+class xfixed_binary : public arithmetic_operator_helper< xfixed_binary<N,T> >
 {
 public:
 	enum {
@@ -70,10 +71,6 @@ public:
 	};
 	typedef typename extended_t<T>::TYPE intermed_t;
 
-	static inline T scaled_multiplication (intermed_t f1, intermed_t f2, int s)
-	{
-		return rounded_division(f1 * f2, s);
-	}
 	static inline T rounded_division (intermed_t n, intermed_t d)
 	{
 		T q = (T)(n / d);
@@ -82,8 +79,13 @@ public:
 		return q;
 	}
 
+	xfixed_binary() : m_rep(0) {}
+
 	xfixed_binary(float v) {
-		m_rep = v*SCALE+(v>0?0.5f:-0.5f);
+		m_rep = static_cast<T>(v*SCALE+(v>0?0.5f:-0.5f));
+	}
+	xfixed_binary(double v) {
+		m_rep = static_cast<T>(v*SCALE+(v>0?0.5f:-0.5f));
 	}
 	xfixed_binary(int v) {
 		m_rep = v<<FRACTION;
@@ -109,7 +111,7 @@ public:
 		}
 	};
 
-	xfixed_binary(xfixed_binary rhs) : m_rep(rhs.m_rep) {}
+	xfixed_binary(const xfixed_binary &rhs) : m_rep(rhs.m_rep) {}
 	inline xfixed_binary& operator = (xfixed_binary rhs) {
 		this->m_rep = rhs.m_rep;
 		return *this;
@@ -123,9 +125,12 @@ public:
 		m_rep = converter<D>N>::exec<D-N>(rhs.m_rep);
 		return *this;
 	}
-
 	inline xfixed_binary& operator = (float v) {
-		m_rep = v*SCALE+(v>0?0.5f:-0.5f);
+		m_rep = static_cast<T>(v*SCALE+(v>0?0.5f:-0.5f));
+		return *this;
+	}
+	inline xfixed_binary& operator = (double v) {
+		m_rep = static_cast<T>(v*SCALE+(v>0?0.5f:-0.5f));
 		return *this;
 	}
 	inline xfixed_binary& operator = (int v) {
@@ -136,74 +141,49 @@ public:
 		m_rep = v<<FRACTION;
 		return *this;
 	}
-
 	inline operator float() const {
 		return static_cast<float>(m_rep)/SCALE; 
 	}
-	inline operator int() const {
-		return static_cast<int>(m_rep>>FRACTION);
-	}
-	inline operator unsigned int() const {
-		return static_cast<unsigned>(m_rep>>FRACTION);
-	}
 
-	bool operator==( xfixed_binary rhs ) const {
+	inline bool operator==( xfixed_binary rhs ) const {
 		return m_rep==rhs.m_rep;
 	}
-	bool operator!=( xfixed_binary rhs ) const {
-		return m_rep!=rhs.m_rep;
-	}
-	bool operator< ( xfixed_binary rhs ) const {
+	inline bool operator< ( xfixed_binary rhs ) const {
 		return m_rep<rhs.m_rep;
 	}
-	bool operator<=( xfixed_binary rhs ) const {
-		return m_rep<=rhs.m_rep;
-	}
-	bool operator> ( xfixed_binary rhs ) const {
-		return m_rep>rhs.m_rep;
-	}
-	bool operator>=( xfixed_binary rhs ) const {
-		return m_rep>=rhs.m_rep;
-	}
 
-	xfixed_binary operator-() const {
+	inline xfixed_binary operator-() const {
 		return xfixed_binary(-m_rep);
 	}
-	
-	xfixed_binary& operator+=( xfixed_binary rhs ) {
+	inline xfixed_binary& operator+=( xfixed_binary rhs ) {
 		m_rep+=rhs.m_rep;
 		return *this;
 	}
-	xfixed_binary& operator-=( xfixed_binary rhs ) {
+	inline xfixed_binary& operator-=( xfixed_binary rhs ) {
 		m_rep-=rhs.m_rep;
 		return *this;
 	}
-	xfixed_binary& operator*=( xfixed_binary rhs ) {
-		m_rep = scaled_multiplication(m_rep, rhs.m_rep, SCALE);
+	inline xfixed_binary& operator*=( xfixed_binary rhs ) {
+		m_rep = rounded_division(static_cast<intermed_t>(m_rep)*rhs.m_rep, SCALE);
 		return *this;
 	}
-	xfixed_binary& operator/=( xfixed_binary rhs ) {
+	inline xfixed_binary& operator/=( xfixed_binary rhs ) {
 		m_rep = rounded_division(static_cast<intermed_t>(m_rep)<<FRACTION, rhs.m_rep);
 		return *this;
 	}
-
-	xfixed_binary& operator*=( int rhs );
-	xfixed_binary& operator*=( unsigned int rhs );
-	xfixed_binary& operator/=( int rhs );
-	xfixed_binary& operator/=( unsigned int rhs );
 
 private:
 	T m_rep;
 };
 
 /// 20:12 fixed point
-typedef xfixed_binary<12,int32_t> xfixed12;
+typedef xfixed_binary<12,int32_t> xfp12_t;
 /// 16:16 fixed point
-typedef xfixed_binary<16,int32_t> xfixed16;
+typedef xfixed_binary<16,int32_t> xfp16_t;
 /// 12:20 fixed point
-typedef xfixed_binary<20,int32_t> xfixed20;
+typedef xfixed_binary<20,int32_t> xfp20_t;
 /// 8:24 fixed point
-typedef xfixed_binary<24,int32_t> xfixed24;
+typedef xfixed_binary<24,int32_t> xfp24_t;
 
 
 }; // namespace wyc
