@@ -1,5 +1,5 @@
-#ifndef __HEADER_WYC_XMATHEX
-#define __HEADER_WYC_XMATHEX
+#ifndef WYC_HEADER_MATHEX
+#define WYC_HEADER_MATHEX
 
 #include <cstdint>
 #include <cmath>
@@ -7,9 +7,6 @@
 
 namespace wyc
 {
-
-typedef float float32_t;
-typedef double float64_t;
 
 //
 // 常量和宏定义
@@ -69,8 +66,8 @@ float fast_cos(float ang);
 //
 // 浮点数辅助函数
 //
-// 注意：部分函数依赖于sizeof(float)==4 && sizeof(double)==8
-//
+typedef float  float32_t;
+typedef double float64_t;
 
 #define FLT_BIT_COUNT 32
 #define FLT_SIGNBIT_MASK 0x80000000
@@ -84,13 +81,13 @@ float fast_cos(float ang);
 
 union FLOATBITS
 {
-	uint32_t ival;
+	uint32_t  ival;
 	float32_t fval;
 };
 
 union DOUBLEBITS
 {
-	uint64_t ival;
+	uint64_t  ival;
 	float64_t fval;
 };
 
@@ -204,46 +201,6 @@ float32_t mod(float32_t a, float32_t b);
 float32_t fast_sqrt(float32_t x);
 float32_t fast_invsqrt(float32_t x);
 
-/**********************************************************
-	伪随机数生成器, 使用 George Marsaglia 的算法
-	随机数范围: (0,1)
-	循环周期: 2^250
-	数值分布: 
-		=0:0.000000%
-		<0.100000:9.968100%
-		<0.200000:10.033800%
-		<0.300000:9.960000%
-		<0.400000:9.984700%
-		<0.500000:10.001200%
-		<0.600000:10.000700%
-		<0.700000:9.972800%
-		<0.800000:9.999600%
-		<0.900000:10.091500%
-		<1.000000:9.987600%
-		=1:0.000000%
-	效率: 耗时若为rand()的1.4倍,
-**********************************************************/
-class xmother_random
-{
-	short m_mother1[10];
-	short m_mother2[10];
-
-	#define m16Long		65536L				/* 2^16 */
-	#define m16Mask		0xFFFF				/* mask for lower 16 bits */
-	#define m15Mask		0x7FFF				/* mask for lower 15 bits */
-	#define m31Mask		0x7FFFFFFF			/* mask for 31 bits */
-	#define m32Double	4294967295.0		/* 2^32-1 */
-
-public:
-	/* Initialize motheri with 9 random values the first time */
-	void start(unsigned long seed);
-	/* Get a random number between 0 and 1 */
-	double random();
-};
-
-
 } // namespace wyc
 
-#endif // end of __HEADER_WYC_XMATHEX
-
-
+#endif // end of WYC_HEADER_MATHEX 
