@@ -36,7 +36,7 @@ class xvector
 {
 public:
 	typedef T element_t;
-	enum { DIMENTION = D };
+	enum { DIMENSION = D };
 	
 	//
 	// 数据
@@ -246,7 +246,7 @@ class xvector<T,2>
 {
 public:
 	typedef T element_t;
-	enum { DIMENTION = 2 };
+	enum { DIMENSION = 2 };
 
 	//
 	// 数据
@@ -443,7 +443,7 @@ class xvector<T,3>
 {
 public:
 	typedef T element_t;
-	enum { DIMENTION = 3 };
+	enum { DIMENSION = 3 };
 
 	//
 	// 数据
@@ -657,7 +657,7 @@ class xvector<T,4>
 {
 public:
 	typedef T element_t;
-	enum { DIMENTION = 4 };
+	enum { DIMENSION = 4 };
 
 	//
 	// 数据
