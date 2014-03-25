@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <algorithm>
 #include "CppUnitTest.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
