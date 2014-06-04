@@ -34,16 +34,18 @@ namespace wyc
 template<class T, int D>
 class xvector
 {
-//
-// 数据
-//
 public:
+	typedef T element_t;
+	enum { DIMENSION = D };
+	
+	//
+	// 数据
+	//
 	T	elem[D];
 
-//
-// 构造函数
-//
-public:
+	//
+	// 构造函数
+	//
 	xvector() 
 	{
 		assert(D>1);
@@ -82,15 +84,11 @@ public:
 		memcpy(elem,v.elem,sizeof(T)*(D<D2?D:D2));
 		return *this;
 	}
-//
-// 外部接口
-//
-public:
-	// 返回维数
-	inline int dimension () const
-	{
-		return D;
-	}
+
+	//
+	// 外部接口
+	//
+
 	// 元素置零
 	inline void zero()
 	{
@@ -246,10 +244,13 @@ public:
 template<class T>
 class xvector<T,2>
 {
-//
-// 数据
-//
 public:
+	typedef T element_t;
+	enum { DIMENSION = 2 };
+
+	//
+	// 数据
+	//
 	union
 	{
 		T	elem[2];
@@ -258,10 +259,10 @@ public:
 			T	x, y;
 		};
 	};
-//
-// 构造函数
-//
-public:
+
+	//
+	// 构造函数
+	//
 	xvector() {}
 
 	xvector(T v1, T v2) : x(v1), y(v2) {}
@@ -297,15 +298,10 @@ public:
 		y=v[1];
 		return *this;
 	}
-//
-// 外部接口
-//
-public:
-	// 返回维数
-	inline int dimension () const
-	{
-		return 2;
-	}
+
+	//
+	// 外部接口
+	//
 	inline void zero()
 	{
 		x=y=0;
@@ -445,10 +441,13 @@ public:
 template<class T>
 class xvector<T,3>
 {
-//
-// 数据
-//
 public:
+	typedef T element_t;
+	enum { DIMENSION = 3 };
+
+	//
+	// 数据
+	//
 	union
 	{
 		T	elem[3];
@@ -457,10 +456,11 @@ public:
 			T	x,y,z;
 		};
 	};
-//
-// 构造函数
-//
-public:
+
+	//
+	// 构造函数
+	//
+
 	xvector() {}
 
 	xvector(T v1, T v2, T v3) : x(v1), y(v2), z(v3) {}
@@ -498,15 +498,11 @@ public:
 		memcpy(elem,v.elem,sizeof(T)*(3<D2?3:D2));
 		return *this;
 	}
-//
-// 外部接口
-//
-public:
-	// 返回维数
-	inline int dimension () const
-	{
-		return 3;
-	}
+
+	//
+	// 外部接口
+	//
+
 	inline void zero()
 	{
 		x=y=z=0;
@@ -659,10 +655,13 @@ public:
 template<class T>
 class xvector<T,4>
 {
-//
-// 数据
-//
 public:
+	typedef T element_t;
+	enum { DIMENSION = 4 };
+
+	//
+	// 数据
+	//
 	union
 	{
 		T	elem[4];
@@ -671,10 +670,10 @@ public:
 			T	x,y,z,w;
 		};
 	};
-//
-// 构造函数
-//
-public:
+
+	//
+	// 构造函数
+	//
 	xvector() {}
 
 	xvector(T v1, T v2, T v3, T v4=1) : x(v1), y(v2), z(v3), w(v4) {}
@@ -711,15 +710,10 @@ public:
 		memcpy(elem,v.elem,sizeof(T)*(4<D2?4:D2));
 		return *this;
 	}
-//
-// 外部接口
-//
-public:
-	// 返回维数
-	inline int dimension () const
-	{
-		return 4;
-	}
+
+	//
+	// 外部接口
+	//
 	inline void zero()
 	{
 		x=y=z=w=0;
@@ -947,15 +941,21 @@ T operator * (const xvector<T,D> &v1, const xvector<T,D> &v2)
 template<class T, int R, int C>
 class xmatrix
 {
-//
-// 数据
-//
 public:
+	typedef T element_t;
+	enum {
+		ROW = R,
+		COL = C,
+	};
+
+	//
+	// 数据
+	//
 	T	elem[R][C];	// 按行优先的次序存储矩阵元素
-//
-// 构造/析构函数
-//
-public:
+
+	//
+	// 构造/析构函数
+	//
 	xmatrix() 
 	{
 		assert(R>0 && C>0);
@@ -970,19 +970,11 @@ public:
 		memcpy(elem[0],m.elem[0],sizeof(T)*R*C);
 		return *this;
 	}
-//
-// 外部接口
-//
-public:
-	// 返回行数和列数
-	inline int row() const
-	{
-		return R;
-	}
-	inline int col() const
-	{
-		return C;
-	}
+
+	//
+	// 外部接口
+	//
+
 	// 检测是否方阵
 	inline bool square() const
 	{
@@ -1234,43 +1226,44 @@ public:
 	}
 	// 根据拉普拉斯展开式计算行列式
 	// 注意，只有方阵才能调用该函数
-	T det () const
-	{
-		assert(square());
-		// 1/2/3阶方阵直接计算
-		if(row()==1)
-		{
-			return elem[0][0];
-		}
-		else if(row()==2)
-		{
-			return (elem[0][0]*elem[1][1]-elem[0][1]*elem[1][0]);
-		}
-		else if(row()==3)
-		{
-			return (
-				elem[0][0]*elem[1][1]*elem[2][2]+
-				elem[0][1]*elem[1][2]*elem[2][0]+
-				elem[0][2]*elem[1][0]*elem[2][1]-
-				elem[2][0]*elem[1][1]*elem[0][2]-
-				elem[2][1]*elem[1][2]*elem[0][0]-
-				elem[2][2]*elem[1][0]*elem[0][1]
-				);
-		}
-		// 4阶(或以上)递归展开
-		xmatrix<T,R-1,C-1> sub;
-		T v, r=0;
-		for(unsigned i=0;i<C;++i)
+	template<int D>
+	T _recursive_det() const {
+		// 递归展开
+		xmatrix<T, D - 1, D - 1> sub;
+		T v, r = 0;
+		for (unsigned i = 0; i<D; ++i)
 		{
 			// 填充子矩阵
-			_get_sub_matrix(sub,0,i);
+			_get_sub_matrix(sub, 0, i);
 			// 计算该子阵的代数余子式
-			v=(i%2) ? (-elem[0][i]) : (elem[0][i]);
-			v*=sub.det();
+			v = (i % 2) ? (-elem[0][i]) : (elem[0][i]);
+			v *= sub.det();
 			// 将结果累加
-			r+=v;
+			r += v;
 		}
 		return r;
+
+	}
+	template<> T _recursive_det<1>() const {
+		return 	elem[0][0];
+	}
+	template<> T _recursive_det<2>() const {
+		return (elem[0][0] * elem[1][1] - elem[0][1] * elem[1][0]);
+	}
+	template<> T _recursive_det<3>() const {
+		return (
+			elem[0][0] * elem[1][1] * elem[2][2] +
+			elem[0][1] * elem[1][2] * elem[2][0] +
+			elem[0][2] * elem[1][0] * elem[2][1] -
+			elem[2][0] * elem[1][1] * elem[0][2] -
+			elem[2][1] * elem[1][2] * elem[0][0] -
+			elem[2][2] * elem[1][0] * elem[0][1]
+			);
+	}
+	T det() const
+	{
+		assert(square());
+		return _recursive_det<R>();
 	}
 	// 基于Gauss-Jordan消元法计算m的逆阵
 	// 结果保存在this中，如果成功返回true，否则返回false
@@ -1430,8 +1423,13 @@ protected:
 template<class T>
 class xmatrix<T,2,2>
 {
-// 数据
 public:
+	typedef T element_t;
+	enum {
+		ROW = 2,
+		COL = 2,
+	};
+
 	// 按行优先的次序存储矩阵元素
 	union
 	{
@@ -1444,8 +1442,7 @@ public:
 		};
 	};
 
-// 构造/析构函数
-public:
+	// 构造/析构函数
 	xmatrix() {};
 
 	xmatrix(const xmatrix &m)
@@ -1460,17 +1457,9 @@ public:
 		return *this;
 	}
 
-// 外部接口
-public:
-	// 返回行数和列数
-	inline int row() const
-	{
-		return 2;
-	}
-	inline int col() const
-	{
-		return 2;
-	}
+	//
+	// 外部接口
+	//
 	// 检测是否方阵
 	inline bool square() const
 	{
@@ -1674,8 +1663,13 @@ public:
 template<class T>
 class xmatrix<T,3,3>
 {
-// 数据
 public:
+	typedef T element_t;
+	enum {
+		ROW = 3,
+		COL = 3,
+	};
+
 	// 按行优先的次序存储矩阵元素
 	union
 	{
@@ -1689,8 +1683,7 @@ public:
 		};
 	};
 
-// 构造/析构函数
-public:
+	// 构造/析构函数
 	xmatrix() {};
 
 	xmatrix(const xmatrix &m)
@@ -1740,17 +1733,9 @@ public:
 		return *this;
 	}
 
-// 外部接口
-public:
-	// 返回行数和列数
-	inline int row() const
-	{
-		return 3;
-	}
-	inline int col() const
-	{
-		return 3;
-	}
+	//
+	// 外部接口
+	//
 	// 检测是否方阵
 	inline bool square() const
 	{
@@ -2028,8 +2013,13 @@ public:
 template<class T>
 class xmatrix<T,4,4>
 {
-// 数据
 public:
+	typedef T element_t;
+	enum {
+		ROW = 4,
+		COL = 4,
+	};
+
 	// 按行优先的次序存储矩阵元素
 	union
 	{
@@ -2044,8 +2034,7 @@ public:
 		};
 	};
 
-// 构造/析构函数
-public:
+	// 构造/析构函数
 	xmatrix() {};
 
 	xmatrix(const xmatrix &m)
@@ -2059,17 +2048,10 @@ public:
 		return *this;
 	}
 
-// 外部接口
-public:
-	// 返回行数和列数
-	inline int row() const
-	{
-		return 4;
-	}
-	inline int col() const
-	{
-		return 4;
-	}
+	//
+	// 外部接口
+	//
+
 	// 检测是否方阵
 	inline bool square() const
 	{
