@@ -84,8 +84,10 @@
     <ClInclude Include="fixedp.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="mathex.h" />
+    <ClInclude Include="matrix.h" />
     <ClInclude Include="transform.h" />
     <ClInclude Include="vecmath.h" />
+    <ClInclude Include="vector.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="geometry.cpp" />
