@@ -1,4 +1,5 @@
 #include "transform.h"
+#include "matrix.h"
 
 namespace wyc
 {
@@ -51,7 +52,8 @@ namespace wyc
 		xvec4f_t vec;
 		vec = { 0, 0, 0, 1 };
 		m_world2local.set_row(3, vec);
-		xvec3f_t tpos = m_world2local*-m_position;
+		xvec3f_t tpos; 
+		tpos = m_world2local*-m_position;
 		m_world2local.set_col(3, tpos);
 		m_flag &= ~WORLD_2_LOCAL;
 	}

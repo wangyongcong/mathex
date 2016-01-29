@@ -57,7 +57,7 @@ namespace wyc
 		mat_ui.set_row(1, vec);
 		vec = { 0, 0, 1, -z_range };
 		mat_ui.set_row(2, vec);
-		proj.mul(mat_ui);
+		proj *= mat_ui;
 	}
 
 } // namespace wyc

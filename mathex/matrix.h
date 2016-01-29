@@ -1,23 +1,80 @@
 #ifndef WYC_HEADER_MATRIX
 #define WYC_HEADER_MATRIX
 
+#include <numeric>
+
 namespace wyc
 {
+
+#define SWAP std::swap
+
+	template<class T>
+	inline bool almost_zero(T v)
+	{
+		return std::fabs(v) < std::numeric_limits<T>::epsilon() * 2;
+	}
+
+// implement arithmetic operators
+// T: vector type
+// S: vector element type
+#define matrix_operator_helper(T, S) \
+	friend inline T operator + (const T &lhs, const T &rhs)\
+	{\
+		T r; r.add(lhs, rhs); return r;\
+	}\
+	friend inline T operator - (const T &lhs, const T &rhs)\
+	{\
+		T r; r.sub(lhs, rhs); return r;\
+	}\
+	friend inline T operator * (const T &lhs, const T &rhs)\
+	{\
+		T r; r.mul(lhs, rhs); return r;\
+	}\
+	friend inline T operator * (const T &lhs, S scalar)\
+	{\
+		T r; r.scale(lhs, scalar); return r;\
+	}\
+	friend inline T operator / (const T &lhs, S scalar)\
+	{\
+		T r; r.div(lhs, scalar); return r;\
+	}\
+	friend inline T operator * (S scalar, const T &rhs)\
+	{\
+		T r; r.scale(rhs, scalar); return r;\
+	}\
+	friend inline bool operator >= (T const& lhs, T const& rhs)\
+	{\
+		return !(lhs <  rhs);\
+	}\
+	friend inline bool operator <= (T const& lhs, T const& rhs)\
+	{\
+		return !(rhs <  lhs);\
+	}\
+	friend inline bool operator > (T const& lhs, T const& rhs)\
+	{\
+		return  (rhs <  lhs);\
+	}
 
 	template<class T, int R, int C>
 	struct xmatrix
 	{
-		typedef T element_t;
+		typedef T scalar_t;
 		enum {
 			ROW = R,
 			COL = C,
 		};
 
-		T	_elem[R][C]; // row first
+		T	_m[R][C]; // row first
 
-		inline xmatrix& operator = (const xmatrix &m)
+		xmatrix& operator = (std::initializer_list<T> li)
 		{
-			memcpy(_elem[0], m._elem[0], sizeof(T)*R*C);
+			size_t cnt = li.size();
+			if (cnt > R * C)
+				cnt = R * C;
+			const T *src = li.begin();
+			T *dst = &_m[0][0];
+			for (size_t i = 0; i < cnt; ++i)
+				dst[i] = src[i];
 			return *this;
 		}
 
@@ -25,89 +82,77 @@ namespace wyc
 		{
 			return (R == C);
 		}
+
 		void identity()
 		{
-			memset(&(_elem[0][0]), 0, sizeof(T)*R*C);
-			assert(R == C);
+			if (!square())
+				return;
+			memset(&(_m[0][0]), 0, sizeof(T)*R*C);
 			for (int i = 0; i<R; ++i)
-				_elem[i][i] = 1;
+				_m[i][i] = 1;
 		}
+
 		inline T* data()
 		{
-			return _elem[0];
+			return _m[0];
 		}
 		inline const T* data() const
 		{
-			return _elem[0];
+			return _m[0];
 		}
-		inline void set(unsigned r, unsigned c, T val)
+
+		inline T* operator [] (unsigned r)
 		{
-			if (r<R && c<C)
-				_elem[r][c] = val;
+			assert(r < R);
+			return _m[r];
 		}
-		inline void get(unsigned r, unsigned c, T &val) const
+		inline const T* operator [] (unsigned r) const
 		{
-			if (r<R && c<C)
-				val = _elem[r][c];
+			assert(r < R);
+			return _m[r];
 		}
-		inline T operator () (unsigned r, unsigned c) const
+		inline T& operator() (unsigned r, unsigned c)
 		{
-			return _elem[r][c];
+			assert(r < R && c < C);
+			return _m[r][c];
 		}
-		inline T& operator () (unsigned r, unsigned c)
+		inline T operator() (unsigned r, unsigned c) const
 		{
-			return _elem[r][c];
+			assert(r < R && c < C);
+			return _m[r][c];
 		}
-		template<int D>
-		inline void set_row(unsigned r, const xvector<T, D> &v)
+
+		inline xvector<T, C> row(unsigned r) const
 		{
 			assert(r<R);
-			memcpy(_elem[r], v._elem, sizeof(T)*(C<D ? C : D));
+			xvector<T, C> v;
+			memcpy(&v, _m[r], sizeof(v));
+			return v;
 		}
-		template<int D>
-		void set_col(unsigned c, const xvector<T, D> &v)
+		xvector<T, R> col(unsigned c) const
 		{
 			assert(c<C);
-			for (int i = 0; i<(R<D ? R : D); ++i)
-				_elem[i][c] = v._elem[i];
+			xvector<T, R> v;
+			for (int i = 0; i<R; ++i)
+				v[i] = _m[i][c];
+			return v;
 		}
-		inline void get_row(unsigned r, xvector<T, C> &v) const
+		inline void set_row(unsigned r, const xvector<T, C> &v)
 		{
 			assert(r<R);
-			memcpy(v._elem, _elem[r], sizeof(T)*C);
+			memcpy(_m[r], &v, sizeof(v));
 		}
-		void get_col(unsigned c, xvector<T, R> &v) const
+		void set_col(unsigned c, const xvector<T, R> &v)
 		{
 			assert(c<C);
 			for (int i = 0; i<R; ++i)
-				v[i] = _elem[i][c];
+				_m[i][c] = v[i];
 		}
 
 		inline xmatrix& operator += (const xmatrix &m)
 		{
-			return this->add(m);
-		}
-		inline xmatrix& operator -= (const xmatrix &m)
-		{
-			return this->sub(m);
-		}
-		inline xmatrix& operator *= (T val)
-		{
-			return this->scale(val);
-		}
-		inline xmatrix& operator /= (T val)
-		{
-			return this->div(val);
-		}
-		inline xmatrix& operator *= (const xmatrix<T, C, R> &m)
-		{
-			return this->mul(m);
-		}
-
-		xmatrix& add(const xmatrix &m)
-		{
-			T *dst = _elem[0];
-			const T *src = m._elem[0];
+			T *dst = _m[0];
+			const T *src = m._m[0];
 			for (int i = R*C; i>0; --i)
 			{
 				*dst += *src;
@@ -116,10 +161,81 @@ namespace wyc
 			}
 			return *this;
 		}
+		inline xmatrix& operator -= (const xmatrix &m)
+		{
+			T *dst = _m[0];
+			const T *src = m._m[0];
+			for (int i = R*C; i>0; --i)
+			{
+				*dst -= *src;
+				++dst;
+				++src;
+			}
+			return *this;
+		}
+		inline xmatrix& operator *= (const xmatrix<T, C, R> &m)
+		{
+			T tmp[C], *dst;
+			int i, j, k;
+			for (i = 0; i<R; ++i)
+			{
+				dst = _m[i];
+				for (j = 0; j<C; ++j)
+				{
+					tmp[j] = 0;
+					for (k = 0; k<C; ++k)
+						tmp[j] += dst[k] * m._m[k][j];
+				}
+				memcpy(dst, tmp, sizeof(T)*C);
+			}
+			return *this;
+		}
+
+		inline xmatrix& operator += (T val)
+		{
+			T *dst = _m[0];
+			for (int i = R*C; i>0; --i)
+			{
+				*dst += val;
+				++dst;
+			}
+			return *this;
+		}
+		inline xmatrix& operator -= (T val)
+		{
+			T *dst = _m[0];
+			for (int i = R*C; i>0; --i)
+			{
+				*dst -= val;
+				++dst;
+			}
+			return *this;
+		}
+		inline xmatrix& operator *= (T val)
+		{
+			T *dst = _m[0];
+			for (int i = R*C; i>0; --i)
+			{
+				*dst *= val;
+				++dst;
+			}
+			return *this;
+		}
+		inline xmatrix& operator /= (T val)
+		{
+			T *dst = _m[0];
+			for (int i = R*C; i>0; --i)
+			{
+				*dst /= val;
+				++dst;
+			}
+			return *this;
+		}
+
 		xmatrix& add(const xmatrix &m1, const xmatrix &m2)
 		{
-			T *dst = _elem[0];
-			const T *src1 = m1._elem[0], *src2 = m2._elem[0];
+			T *dst = _m[0];
+			const T *src1 = m1._m[0], *src2 = m2._m[0];
 			for (int i = R*C; i>0; --i)
 			{
 				*dst = *src1 + *src2;
@@ -129,22 +245,10 @@ namespace wyc
 			}
 			return *this;
 		}
-		xmatrix& sub(const xmatrix &m)
-		{
-			T *dst = _elem[0];
-			const T *src = m._elem[0];
-			for (int i = R*C; i>0; --i)
-			{
-				*dst -= *src;
-				++dst;
-				++src;
-			}
-			return *this;
-		}
 		xmatrix& sub(const xmatrix &m1, const xmatrix &m2)
 		{
-			T *dst = _elem[0];
-			const T *src1 = m1._elem[0], *src2 = m2._elem[0];
+			T *dst = _m[0];
+			const T *src1 = m1._m[0], *src2 = m2._m[0];
 			for (int i = R*C; i>0; --i)
 			{
 				*dst = *src1 - *src2;
@@ -154,20 +258,10 @@ namespace wyc
 			}
 			return *this;
 		}
-		xmatrix& scale(T val)
-		{
-			T *dst = _elem[0];
-			for (int i = R*C; i>0; --i)
-			{
-				*dst *= val;
-				++dst;
-			}
-			return *this;
-		}
 		xmatrix& scale(const xmatrix &m, T val)
 		{
-			T *dst = _elem[0];
-			const T *src = m._elem[0];
+			T *dst = _m[0];
+			const T *src = m._m[0];
 			for (int i = R*C; i>0; --i)
 			{
 				*dst = *src*val;
@@ -176,42 +270,15 @@ namespace wyc
 			}
 			return *this;
 		}
-		xmatrix& div(T val)
-		{
-			T *dst = _elem[0];
-			for (int i = R*C; i>0; --i)
-			{
-				*dst /= val;
-				++dst;
-			}
-			return *this;
-		}
 		xmatrix& div(const xmatrix &m, T val)
 		{
-			T *dst = _elem[0];
-			const T *src = m._elem[0];
+			T *dst = _m[0];
+			const T *src = m._m[0];
 			for (int i = R*C; i>0; --i)
 			{
 				*dst = *src / val;
 				++dst;
 				++src;
-			}
-			return *this;
-		}
-		xmatrix& mul(const xmatrix<T, C, R> &m)
-		{
-			T tmp[C], *dst;
-			int i, j, k;
-			for (i = 0; i<R; ++i)
-			{
-				dst = _elem[i];
-				for (j = 0; j<C; ++j)
-				{
-					tmp[j] = 0;
-					for (k = 0; k<C; ++k)
-						tmp[j] += dst[k] * m._elem[k][j];
-				}
-				memcpy(dst, tmp, sizeof(T)*C);
 			}
 			return *this;
 		}
@@ -222,82 +289,113 @@ namespace wyc
 			const T *src;
 			for (int i = 0; i<R; ++i)
 			{
-				dst = _elem[i];
-				src = m1._elem[i];
+				dst = _m[i];
+				src = m1._m[i];
 				for (int j = 0; j<C; ++j)
 				{
 					sum = 0;
 					for (int k = 0; k<I; ++k)
-						sum += src[k] * m2(k, j);
+						sum += src[k] * m2[k][j];
 					dst[j] = sum;
 				}
 			}
 			return *this;
 		}
+
 		xmatrix& transpose()
 		{
 			T *dst;
 			for (int i = 0; i<R; ++i)
 			{
-				dst = _elem[i];
+				dst = _m[i];
 				for (int j = i + 1; j<C; ++j)
-					SWAP(dst[j], _elem[j][i]);
+					SWAP(dst[j], _m[j][i]);
 			}
 			return *this;
 		}
-		xmatrix& transpose(const xmatrix<T, C, R> &m)
+		xmatrix& transpose_of(const xmatrix<T, C, R> &m)
 		{
+			if (&m == this)
+				return this->transpose();
 			T *dst;
 			for (int i = 0; i<R; ++i)
 			{
-				dst = _elem[i];
+				dst = _m[i];
 				for (int j = 0; j<C; ++j)
-					dst[j] = m._elem[j][i];
+					dst[j] = m._m[j][i];
 			}
 			return *this;
 		}
+
+		// get minor(r,c) sub matrix
+		void minor_matrix(xmatrix<T, R - 1, C - 1> &m, int r, int c) const
+		{
+			unsigned i, j, k, l;
+			for (i = 0, k = 0; i<R; ++i)
+			{
+				if (i == r)
+					continue;
+				for (j = 0, l = 0; j<C; ++j)
+				{
+					if (j == c)
+						continue;
+					m._m[k][l] = _m[i][j];
+					++l;
+				}
+				++k;
+			}
+		}
 		// Laplace algorithm
 		template<int D>
-		T _recursive_det() const {
+		T _recur_det() const {
 			xmatrix<T, D - 1, D - 1> sub;
 			T v, r = 0;
 			for (unsigned i = 0; i<D; ++i)
 			{
-				_get_sub_matrix(sub, 0, i);
-				v = (i % 2) ? (-_elem[0][i]) : (_elem[0][i]);
-				v *= sub.det();
+				minor_matrix(sub, 0, i);
+				v = (i % 2) ? (-_m[0][i]) : (_m[0][i]);
+				v *= sub.determinant();
 				r += v;
 			}
 			return r;
 
 		}
-		template<> T _recursive_det<1>() const {
-			return 	_elem[0][0];
+		template<> T _recur_det<1>() const {
+			return 	_m[0][0];
 		}
-		template<> T _recursive_det<2>() const {
-			return (_elem[0][0] * _elem[1][1] - _elem[0][1] * _elem[1][0]);
+		template<> T _recur_det<2>() const {
+			return (_m[0][0] * _m[1][1] - _m[0][1] * _m[1][0]);
 		}
-		template<> T _recursive_det<3>() const {
+		template<> T _recur_det<3>() const {
 			return (
-				_elem[0][0] * _elem[1][1] * _elem[2][2] +
-				_elem[0][1] * _elem[1][2] * _elem[2][0] +
-				_elem[0][2] * _elem[1][0] * _elem[2][1] -
-				_elem[2][0] * _elem[1][1] * _elem[0][2] -
-				_elem[2][1] * _elem[1][2] * _elem[0][0] -
-				_elem[2][2] * _elem[1][0] * _elem[0][1]
+				_m[0][0] * _m[1][1] * _m[2][2] +
+				_m[0][1] * _m[1][2] * _m[2][0] +
+				_m[0][2] * _m[1][0] * _m[2][1] -
+				_m[2][0] * _m[1][1] * _m[0][2] -
+				_m[2][1] * _m[1][2] * _m[0][0] -
+				_m[2][2] * _m[1][0] * _m[0][1]
 				);
 		}
-		T det() const
+		T determinant() const
 		{
-			assert(square());
-			return _recursive_det<R>();
+			if(square())
+				return _recur_det<R>();
+			return 0;
 		}
-		// Gauss-Jordan消元法计算m的逆阵
-		// 结果保存在this中，如果成功返回true，否则返回false
-		// 只有方阵才能调用该函数
-		bool inverse(const xmatrix &m)
+		inline bool inverse()
 		{
-			assert(square());
+			xmatrix tmp;
+			if (!tmp.inverse_of(*this))
+				return false;
+			*this = tmp;
+			return true;
+		}
+		// Gauss-Jordan elimination
+		// return: true if success, else false
+		bool inverse_of(const xmatrix &m)
+		{
+			if (!square())
+				return false;
 			*this = m;
 			int i, j, k;
 			int row[R], col[C];
@@ -306,10 +404,10 @@ namespace wyc
 			for (k = 0; k<R; ++k)
 			{
 				T max = 0;
-				// 寻找主元
+				// find the pivot
 				for (i = k; i<R; ++i)
 				{
-					src = _elem[i];
+					src = _m[i];
 					for (j = k; j<C; ++j)
 					{
 						if (abs(src[j])>max)
@@ -320,32 +418,30 @@ namespace wyc
 						}
 					}
 				}
-				// 如果主元为0，逆阵不存在
-				if (fequal(max, 0))
+				if (almost_zero(max))
 					return false;
 				if (row[k] != k)
 				{
-					// 行交换
+					// row switching
 					det = -det;
-					src = _elem[row[k]];
-					dst = _elem[k];
+					src = _m[row[k]];
+					dst = _m[k];
 					for (j = 0; j<C; ++j)
 						SWAP(src[j], dst[j]);
 				}
 				if (col[k] != k)
 				{
-					// 列交换
+					// col switching
 					det = -det;
 					for (j = col[k], i = 0; i<R; ++i)
-						SWAP(_elem[i][j], _elem[i][k]);
+						SWAP(_m[i][j], _m[i][k]);
 				}
-				T mkk = _elem[k][k];
-				// 计算行列式
+				T mkk = _m[k][k];
+				// here's the determinant
 				det *= mkk;
-				// 计算逆阵元素
 				mkk = 1 / mkk;
-				_elem[k][k] = mkk;
-				src = _elem[k];
+				_m[k][k] = mkk;
+				src = _m[k];
 				for (j = 0; j<k; ++j)
 					src[j] *= mkk;
 				for (++j; j<C; ++j)
@@ -354,7 +450,7 @@ namespace wyc
 				{
 					if (i == k)
 						continue;
-					dst = _elem[i];
+					dst = _m[i];
 					for (j = 0; j<C; ++j)
 						if (j != k)
 							dst[j] -= src[j] * dst[k];
@@ -362,23 +458,22 @@ namespace wyc
 				mkk = -mkk;
 				for (i = 0; i<R; ++i)
 					if (i != k)
-						_elem[i][k] *= mkk;
+						_m[i][k] *= mkk;
 			}
-			// 如果之前执行了行/列交换，则需要执行逆交换
-			// 交换次序相反，且行（列）交换用列（行）交换代替
+			// backward substitution
 			for (k = R - 1; k >= 0; --k)
 			{
 				if (col[k] != k)
 				{
-					src = _elem[col[k]];
-					dst = _elem[k];
+					src = _m[col[k]];
+					dst = _m[k];
 					for (j = 0; j<C; ++j)
 						SWAP(src[j], dst[j]);
 				}
 				if (row[k] != k)
 				{
 					for (j = row[k], i = 0; i<R; ++i)
-						SWAP(_elem[i][j], _elem[i][k]);
+						SWAP(_m[i][j], _m[i][k]);
 				}
 			}
 			return true;
@@ -386,7 +481,7 @@ namespace wyc
 
 		bool operator == (const xmatrix &m) const
 		{
-			const T *iter1 = _elem[0], *iter2 = m._elem[0];
+			const T *iter1 = _m[0], *iter2 = m._m[0];
 			for (int i = R*C; i>0; --i) {
 				if (*iter1 != *iter2)
 					return false;
@@ -397,7 +492,7 @@ namespace wyc
 		}
 		bool operator != (const xmatrix &m) const
 		{
-			const T *iter1 = _elem[0], *iter2 = m._elem[0];
+			const T *iter1 = _m[0], *iter2 = m._m[0];
 			for (int i = R*C; i>0; --i) {
 				if (*iter1 != *iter2)
 					return true;
@@ -406,43 +501,25 @@ namespace wyc
 			}
 			return false;
 		}
+		bool operator < (const xmatrix &m) const
+		{
+			const T *iter1 = _m[0], *iter2 = m._m[0];
+			for (int i = R*C; i>0; --i) {
+				if (*iter1 >= *iter2)
+					return false;
+				++iter1;
+				++iter2;
+			}
+			return true;
+		}
 
-		template<int R2, int C2>
-		xmatrix& copy(const xmatrix<T, R2, C2> &m)
-		{
-			int r = std::min(R2, R);
-			int c = std::min(C2, C);
-			for (int i = 0; i<r; ++i)
-			{
-				for (int j = 0; j<c; ++j)
-					_elem[i][j] = m._elem[i][j];
-			}
-			return *this;
-		}
-		// 获取去除第rr行rc列后的子阵
-		void _get_sub_matrix(xmatrix<T, R - 1, C - 1> &m, int rr, int rc) const
-		{
-			unsigned i, j, k, l;
-			for (i = 0, k = 0; i<R; ++i)
-			{
-				if (i == rr)
-					continue;
-				for (j = 0, l = 0; j<C; ++j)
-				{
-					if (j == rc)
-						continue;
-					m._elem[k][l] = _elem[i][j];
-					++l;
-				}
-				++k;
-			}
-		}
+		matrix_operator_helper(xmatrix, T)
 	};
 
 	template<class T>
 	struct xmatrix<T, 2, 2>
 	{
-		typedef T element_t;
+		typedef T scalar_t;
 		enum {
 			ROW = 2,
 			COL = 2,
@@ -450,7 +527,7 @@ namespace wyc
 
 		union
 		{
-			T	_elem[2][2];
+			T	_m[2][2];
 			struct
 			{
 				T
@@ -459,10 +536,15 @@ namespace wyc
 			};
 		};
 
-		xmatrix& operator = (const xmatrix &m)
+		xmatrix& operator = (std::initializer_list<T> li)
 		{
-			m00 = m.m00; m01 = m.m01;
-			m10 = m.m10; m11 = m.m11;
+			size_t cnt = li.size();
+			if (cnt > 4)
+				cnt = 4;
+			const T *src = li.begin();
+			T *dst = &this->m00;
+			for (size_t i = 0; i < cnt; ++i)
+				dst[i] = src[i];
 			return *this;
 		}
 
@@ -477,126 +559,94 @@ namespace wyc
 		}
 		inline T* data()
 		{
-			return _elem[0];
+			return _m[0];
 		}
 		inline const T* data() const
 		{
-			return _elem[0];
+			return _m[0];
 		}
-		inline void set(unsigned r, unsigned c, T val)
+
+		inline T* operator [] (unsigned r)
 		{
-			if (r<2 && c<2)
-				_elem[r][c] = val;
+			assert(r < 2);
+			return _m[r];
 		}
-		inline void get(unsigned r, unsigned c, T &val) const
+		inline const T* operator [] (unsigned r) const
 		{
-			if (r<2 && c<2)
-				val = _elem[r][c];
+			assert(r < 2);
+			return _m[r];
 		}
-		inline T operator () (unsigned r, unsigned c) const
+		inline T& operator() (unsigned r, unsigned c)
 		{
-			assert(r<2 && c<2);
-			return _elem[r][c];
+			assert(r < 2 && c < 2);
+			return _m[r][c];
 		}
-		inline T& operator () (unsigned r, unsigned c)
+		inline T operator() (unsigned r, unsigned c) const
 		{
-			assert(r<2 && c<2);
-			return _elem[r][c];
+			assert(r < 2 && c < 2);
+			return _m[r][c];
 		}
-		template<int D>
-		inline void set_row(unsigned r, const xvector<T, D> &v)
+
+		inline xvector<T, 2> row(unsigned r) const
 		{
-			assert(r<2);
-			_elem[r][0] = v[0];
-			_elem[r][1] = v[1];
+			assert(r < 2);
+			return xvector<T, 2>({ _m[r][0], _m[r][1] });
 		}
-		template<int D>
-		inline void set_col(unsigned c, const xvector<T, D> &v)
+		inline xvector<T, 2> col(unsigned c) const
 		{
-			assert(c<2);
-			_elem[0][c] = v[0];
-			_elem[1][c] = v[1];
+			assert(c < 2);
+			return xvector<T, 2>({ _m[0][c], _m[1][c] });
 		}
-		inline void get_row(unsigned r, xvector<T, 2> &v) const
+		inline void set_row(unsigned r, const xvector<T, 2> &v)
 		{
-			assert(r<2);
-			v.set(_elem[r][0], _elem[r][1]);
+			assert(r < 2);
+			_m[r][0] = v[0];
+			_m[r][1] = v[1];
 		}
-		inline void get_col(unsigned c, xvector<T, 2> &v) const
+		inline void set_col(unsigned c, const xvector<T, 2> &v)
 		{
-			assert(c<2);
-			v.set(_elem[0][c], _elem[1][c]);
+			assert(c < 2);
+			_m[0][c] = v[0];
+			_m[1][c] = v[1];
 		}
 
 		inline xmatrix& operator += (const xmatrix &m)
-		{
-			return this->add(m);
-		}
-		inline xmatrix& operator -= (const xmatrix &m)
-		{
-			return this->sub(m);
-		}
-		inline xmatrix& operator *= (T val)
-		{
-			return this->scale(val);
-		}
-		inline xmatrix& operator /= (T val)
-		{
-			return this->div(val);
-		}
-		inline xmatrix& operator *= (const xmatrix &m)
-		{
-			return this->mul(m);
-		}
-		xmatrix& add(const xmatrix &m)
 		{
 			m00 += m.m00; m01 += m.m01;
 			m10 += m.m10; m11 += m.m11;
 			return *this;
 		}
-		xmatrix& add(const xmatrix &m1, const xmatrix &m2)
-		{
-			m00 = m1.m00 + m2.m00; m01 = m1.m01 + m2.m01;
-			m10 = m1.m10 + m2.m10; m11 = m1.m11 + m2.m11;
-			return *this;
-		}
-		xmatrix& sub(const xmatrix &m)
+		inline xmatrix& operator -= (const xmatrix &m)
 		{
 			m00 -= m.m00; m01 -= m.m01;
 			m10 -= m.m10; m11 -= m.m11;
 			return *this;
 		}
-		xmatrix& sub(const xmatrix &m1, const xmatrix &m2)
+		inline xmatrix& operator += (T val)
 		{
-			m00 = m1.m00 - m2.m00; m01 = m1.m01 - m2.m01;
-			m10 = m1.m10 - m2.m10; m11 = m1.m11 - m2.m11;
+			m00 += val; m01 += val;
+			m10 += val; m11 += val;
 			return *this;
 		}
-		xmatrix& scale(T val)
+		inline xmatrix& operator -= (T val)
+		{
+			m00 -= val; m01 -= val;
+			m10 -= val; m11 -= val;
+			return *this;
+		}
+		inline xmatrix& operator *= (T val)
 		{
 			m00 *= val; m01 *= val;
 			m10 *= val; m11 *= val;
 			return *this;
 		}
-		xmatrix& scale(const xmatrix &m, T val)
-		{
-			m00 = m.m00*val; m01 = m.m01*val;
-			m10 = m.m10*val; m11 = m.m11*val;
-			return *this;
-		}
-		xmatrix& div(T val)
+		inline xmatrix& operator /= (T val)
 		{
 			m00 /= val; m01 /= val;
 			m10 /= val; m11 /= val;
 			return *this;
 		}
-		xmatrix& div(const xmatrix &m, T val)
-		{
-			m00 = m.m00 / val; m01 = m.m01 / val;
-			m10 = m.m10 / val; m11 = m.m11 / val;
-			return *this;
-		}
-		xmatrix& mul(const xmatrix &m)
+		inline xmatrix& operator *= (const xmatrix &m)
 		{
 			T tmp0, tmp1;
 			tmp0 = m00*m.m00 + m01*m.m10;
@@ -609,6 +659,31 @@ namespace wyc
 			m11 = tmp1;
 			return *this;
 		}
+
+		xmatrix& add(const xmatrix &m1, const xmatrix &m2)
+		{
+			m00 = m1.m00 + m2.m00; m01 = m1.m01 + m2.m01;
+			m10 = m1.m10 + m2.m10; m11 = m1.m11 + m2.m11;
+			return *this;
+		}
+		xmatrix& sub(const xmatrix &m1, const xmatrix &m2)
+		{
+			m00 = m1.m00 - m2.m00; m01 = m1.m01 - m2.m01;
+			m10 = m1.m10 - m2.m10; m11 = m1.m11 - m2.m11;
+			return *this;
+		}
+		xmatrix& scale(const xmatrix &m, T val)
+		{
+			m00 = m.m00*val; m01 = m.m01*val;
+			m10 = m.m10*val; m11 = m.m11*val;
+			return *this;
+		}
+		xmatrix& div(const xmatrix &m, T val)
+		{
+			m00 = m.m00 / val; m01 = m.m01 / val;
+			m10 = m.m10 / val; m11 = m.m11 / val;
+			return *this;
+		}
 		xmatrix& mul(const xmatrix &m1, const xmatrix &m2)
 		{
 			m00 = m1.m00*m2.m00 + m1.m01*m2.m10;
@@ -617,31 +692,46 @@ namespace wyc
 			m11 = m1.m10*m2.m01 + m1.m11*m2.m11;
 			return *this;
 		}
+
 		inline xmatrix& transpose()
 		{
 			SWAP(m01, m10);
 			return *this;
 		}
-		xmatrix& transpose(const xmatrix &m)
+		xmatrix& transpose_of(const xmatrix &m)
 		{
+			if (&m == this)
+				return this->transpose();
 			m00 = m.m00; m01 = m.m10;
 			m10 = m.m01; m11 = m.m11;
 			return *this;
 		}
-		inline T det() const
+
+		inline T determinant() const
 		{
 			return (m00*m11 - m01*m10);
 		}
-		bool inverse(const xmatrix &m)
+
+		bool inverse()
 		{
-			T d = m.det();
-			if (fequal(d, 0))
+			xmatrix tmp;
+			if (!tmp.inverse_of(*this))
+				return false;
+			*this = tmp;
+			return true;
+		}
+
+		bool inverse_of(const xmatrix &m)
+		{
+			T d = m.determinant();
+			if (almost_zero(d))
 				return false;
 			T invdet = T(1) / d;
 			m00 = m.m11*invdet; m01 = -m.m01*invdet;
 			m10 = -m.m10*invdet; m11 = m.m00*invdet;
 			return true;
 		}
+
 		bool operator == (const xmatrix &mat) const
 		{
 			return m00 == mat.m00 && m01 == mat.m01
@@ -652,13 +742,20 @@ namespace wyc
 			return m00 != mat.m00 || m01 != mat.m01
 				|| m10 != mat.m10 || m11 != mat.m11;
 		}
+		bool operator < (const xmatrix &mat) const
+		{
+			return m00 < mat.m00 && m01 < mat.m01
+				&& m10 < mat.m10 && m11 < mat.m11;
+		}
+
+		matrix_operator_helper(xmatrix, T)
 	};
 
 
 	template<class T>
 	struct xmatrix<T, 3, 3>
 	{
-		typedef T element_t;
+		typedef T scalar_t;
 		enum {
 			ROW = 3,
 			COL = 3,
@@ -666,7 +763,7 @@ namespace wyc
 
 		union
 		{
-			T	_elem[3][3];
+			T	_m[3][3];
 			struct
 			{
 				T
@@ -676,35 +773,15 @@ namespace wyc
 			};
 		};
 
-		xmatrix& operator = (const xmatrix &m)
+		xmatrix& operator = (std::initializer_list<T> li)
 		{
-			memcpy(_elem[0], m._elem[0], sizeof(T) * 9);
-			return *this;
-		}
-
-		xmatrix& operator = (const xmatrix<T, 2, 2> &m)
-		{
-			for (int i = 0; i<2; ++i)
-			{
-				for (int j = 0; j<2; ++j)
-					_elem[i][j] = m._elem[i][j];
-			}
-			_elem[0][2] = 0;
-			_elem[1][2] = 0;
-			T *row = _elem[2];
-			row[0] = 0;
-			row[1] = 0;
-			row[2] = 1;
-			return *this;
-		}
-
-		xmatrix& operator = (const xmatrix<T, 4, 4> &m)
-		{
-			for (int i = 0; i<3; ++i)
-			{
-				for (int j = 0; j<3; ++j)
-					_elem[i][j] = m._elem[i][j];
-			}
+			size_t cnt = li.size();
+			if (cnt > 9)
+				cnt = 9;
+			const T *src = li.begin();
+			T *dst = &this->m00;
+			for (size_t i = 0; i < cnt; ++i)
+				dst[i] = src[i];
 			return *this;
 		}
 
@@ -719,148 +796,101 @@ namespace wyc
 		}
 		inline T* data()
 		{
-			return _elem[0];
+			return _m[0];
 		}
 		inline const T* data() const
 		{
-			return _elem[0];
+			return _m[0];
 		}
-		inline void set(unsigned r, unsigned c, T val)
+
+		inline T* operator [] (unsigned r)
 		{
-			if (r<3 && c<3)
-				_elem[r][c] = val;
+			assert(r < 3);
+			return _m[r];
 		}
-		inline void get(unsigned r, unsigned c, T &val) const
+		inline const T* operator [] (unsigned r) const
 		{
-			if (r<3 && c<3)
-				val = _elem[r][c];
+			assert(r < 3);
+			return _m[r];
 		}
-		inline T operator () (unsigned r, unsigned c) const
+		inline T& operator() (unsigned r, unsigned c)
 		{
-			assert(r<3 && c<3);
-			return _elem[r][c];
+			assert(r < 3 && c < 3);
+			return _m[r][c];
 		}
-		inline T& operator () (unsigned r, unsigned c)
+		inline T operator() (unsigned r, unsigned c) const
 		{
-			assert(r<3 && c<3);
-			return _elem[r][c];
+			assert(r < 3 && c < 3);
+			return _m[r][c];
 		}
-		template<int D>
-		inline void set_row(unsigned r, const xvector<T, D> &v)
+
+		inline xvector<T, 3> row(unsigned r) const
 		{
 			assert(r<3);
-			assert(D>2);
-			T *row = _elem[r];
+			return xvector<T, 3>({ _m[r][0], _m[r][1], _m[r][2] });
+		}
+		inline xvector<T, 3> col(unsigned c) const
+		{
+			assert(c<3);
+			return xvector<T, 3>({ _m[0][c], _m[1][c], _m[2][c] });
+		}
+		inline void set_row(unsigned r, const xvector<T, 3> &v)
+		{
+			assert(r<3);
+			T *row = _m[r];
 			row[0] = v[0];
 			row[1] = v[1];
 			row[2] = v[2];
 		}
-		template<int D>
-		inline void set_col(unsigned c, const xvector<T, D> &v)
+		inline void set_col(unsigned c, const xvector<T, 3> &v)
 		{
 			assert(c<3);
-			assert(D>2);
-			_elem[0][c] = v[0];
-			_elem[1][c] = v[1];
-			_elem[2][c] = v[2];
-		}
-		inline void set_row(unsigned r, const xvector<T, 2> &v)
-		{
-			assert(r<3);
-			_elem[r][0] = v.x;
-			_elem[r][1] = v.y;
-		}
-		inline void set_col(unsigned c, const xvector<T, 2> &v)
-		{
-			assert(c<3);
-			_elem[0][c] = v.x;
-			_elem[1][c] = v.y;
-		}
-		inline void get_row(unsigned r, xvector<T, 3> &v) const
-		{
-			assert(r<3);
-			const T *row = _elem[r];
-			v.set(row[0], row[1], row[2]);
-		}
-		inline void get_col(unsigned c, xvector<T, 3> &v) const
-		{
-			assert(c<3);
-			v.set(_elem[0][c], _elem[1][c], _elem[2][c]);
+			_m[0][c] = v[0];
+			_m[1][c] = v[1];
+			_m[2][c] = v[2];
 		}
 
 		inline xmatrix& operator += (const xmatrix &m)
-		{
-			return this->add(m);
-		}
-		inline xmatrix& operator -= (const xmatrix &m)
-		{
-			return this->sub(m);
-		}
-		inline xmatrix& operator *= (T val)
-		{
-			return this->scale(val);
-		}
-		inline xmatrix& operator /= (T val)
-		{
-			return this->div(val);
-		}
-		inline xmatrix& operator *= (const xmatrix &m)
-		{
-			return this->mul(m);
-		}
-		xmatrix& add(const xmatrix &m)
 		{
 			m00 += m.m00; m01 += m.m01; m02 += m.m02;
 			m10 += m.m10; m11 += m.m11; m12 += m.m12;
 			m20 += m.m20; m21 += m.m21; m22 += m.m22;
 			return *this;
 		}
-		xmatrix& add(const xmatrix &m1, const xmatrix &m2)
-		{
-			m00 = m1.m00 + m2.m00; m01 = m1.m01 + m2.m01; m02 = m1.m02 + m2.m02;
-			m10 = m1.m10 + m2.m10; m11 = m1.m11 + m2.m11; m12 = m1.m12 + m2.m12;
-			m20 = m1.m20 + m2.m20; m21 = m1.m21 + m2.m21; m22 = m1.m22 + m2.m22;
-			return *this;
-		}
-		xmatrix& sub(const xmatrix &m)
+		inline xmatrix& operator -= (const xmatrix &m)
 		{
 			m00 -= m.m00; m01 -= m.m01; m02 -= m.m02;
 			m10 -= m.m10; m11 -= m.m11; m12 -= m.m12;
 			m20 -= m.m20; m21 -= m.m21; m22 -= m.m22;
 			return *this;
 		}
-		xmatrix& sub(const xmatrix &m1, const xmatrix &m2)
+		inline xmatrix& operator += (T val)
 		{
-			m00 = m1.m00 - m2.m00; m01 = m1.m01 - m2.m01; m02 = m1.m02 - m2.m02;
-			m10 = m1.m10 - m2.m10; m11 = m1.m11 - m2.m11; m12 = m1.m12 - m2.m12;
-			m20 = m1.m20 - m2.m20; m21 = m1.m21 - m2.m21; m22 = m1.m22 - m2.m22;
+			m00 += val; m01 += val; m02 += val;
+			m10 += val; m11 += val; m12 += val;
+			m20 += val; m21 += val; m22 += val;
 			return *this;
 		}
-		xmatrix& scale(T val)
+		inline xmatrix& operator -= (T val)
+		{
+			m00 -= val; m01 -= val; m02 -= val;
+			m10 -= val; m11 -= val; m12 -= val;
+			m20 -= val; m21 -= val; m22 -= val;
+			return *this;
+		}
+		inline xmatrix& operator *= (T val)
 		{
 			m00 *= val; m01 *= val; m02 *= val;
 			m10 *= val; m11 *= val; m12 *= val;
 			m20 *= val; m21 *= val; m22 *= val;
 			return *this;
 		}
-		xmatrix& scale(const xmatrix &m, T val)
-		{
-			m00 = m.m00*val; m01 = m.m01*val; m02 = m.m02*val;
-			m10 = m.m10*val; m11 = m.m11*val; m12 = m.m12*val;
-			m20 = m.m20*val; m21 = m.m21*val; m22 = m.m22*val;
-			return *this;
-		}
-		inline xmatrix& div(T val)
+		inline xmatrix& operator /= (T val)
 		{
 			T inv = T(1) / val;
-			return scale(inv);
+			return *this *= inv;
 		}
-		inline xmatrix& div(const xmatrix &m, T val)
-		{
-			T inv = T(1) / val;
-			return scale(m, inv);
-		}
-		xmatrix& mul(const xmatrix &mat)
+		inline xmatrix& operator *= (const xmatrix &mat)
 		{
 			T temp[3];
 			temp[0] = m00*mat.m00 + m01*mat.m10 + m02*mat.m20;
@@ -883,6 +913,33 @@ namespace wyc
 			m22 = temp[2];
 			return *this;
 		}
+
+		xmatrix& add(const xmatrix &m1, const xmatrix &m2)
+		{
+			m00 = m1.m00 + m2.m00; m01 = m1.m01 + m2.m01; m02 = m1.m02 + m2.m02;
+			m10 = m1.m10 + m2.m10; m11 = m1.m11 + m2.m11; m12 = m1.m12 + m2.m12;
+			m20 = m1.m20 + m2.m20; m21 = m1.m21 + m2.m21; m22 = m1.m22 + m2.m22;
+			return *this;
+		}
+		xmatrix& sub(const xmatrix &m1, const xmatrix &m2)
+		{
+			m00 = m1.m00 - m2.m00; m01 = m1.m01 - m2.m01; m02 = m1.m02 - m2.m02;
+			m10 = m1.m10 - m2.m10; m11 = m1.m11 - m2.m11; m12 = m1.m12 - m2.m12;
+			m20 = m1.m20 - m2.m20; m21 = m1.m21 - m2.m21; m22 = m1.m22 - m2.m22;
+			return *this;
+		}
+		xmatrix& scale(const xmatrix &m, T val)
+		{
+			m00 = m.m00*val; m01 = m.m01*val; m02 = m.m02*val;
+			m10 = m.m10*val; m11 = m.m11*val; m12 = m.m12*val;
+			m20 = m.m20*val; m21 = m.m21*val; m22 = m.m22*val;
+			return *this;
+		}
+		inline xmatrix& div(const xmatrix &m, T val)
+		{
+			T inv = T(1) / val;
+			return scale(m, inv);
+		}
 		xmatrix& mul(const xmatrix &m1, const xmatrix &m2)
 		{
 			m00 = m1.m00*m2.m00 + m1.m01*m2.m10 + m1.m02*m2.m20;
@@ -896,6 +953,7 @@ namespace wyc
 			m22 = m1.m20*m2.m02 + m1.m21*m2.m12 + m1.m22*m2.m22;
 			return *this;
 		}
+
 		xmatrix& transpose()
 		{
 			SWAP(m01, m10);
@@ -903,14 +961,17 @@ namespace wyc
 			SWAP(m12, m21);
 			return *this;
 		}
-		xmatrix& transpose(const xmatrix &m)
+		xmatrix& transpose_of(const xmatrix &m)
 		{
+			if (&m == this)
+				return this->transpose();
 			m00 = m.m00; m01 = m.m10; m02 = m.m20;
 			m10 = m.m01; m11 = m.m11; m12 = m.m21;
 			m20 = m.m02; m21 = m.m12; m22 = m.m22;
 			return *this;
 		}
-		T det() const
+
+		T determinant() const
 		{
 			return (
 				m00*m11*m22 +
@@ -921,10 +982,18 @@ namespace wyc
 				m22*m10*m01
 				);
 		}
-		bool inverse(const xmatrix &m)
+		bool inverse()
 		{
-			T d = det();
-			if (fequal(d, 0))
+			xmatrix tmp;
+			if (!tmp.inverse_of(*this))
+				return false;
+			*this = tmp;
+			return true;
+		}
+		bool inverse_of(const xmatrix &m)
+		{
+			T d = m.determinant();
+			if (almost_zero(d))
 				return false;
 			// adjoint matrix
 			T adj[9];
@@ -938,15 +1007,16 @@ namespace wyc
 			adj[5] = m.m02*m.m10 - m.m00*m.m12;
 			adj[8] = m.m00*m.m11 - m.m01*m.m10;
 			// the inverse matrix
-			T *dst = _elem[0];
+			T *dst = _m[0];
 			T invdet = T(1) / d;
 			for (int i = 0; i<9; ++i)
 				dst[i] = adj[i] * invdet;
 			return true;
 		}
+
 		bool operator == (const xmatrix &m) const
 		{
-			const T *iter1 = _elem[0], *iter2 = m._elem[0];
+			const T *iter1 = _m[0], *iter2 = m._m[0];
 			for (int i = 9; i>0; --i) {
 				if (*iter1 != *iter2)
 					return false;
@@ -957,7 +1027,7 @@ namespace wyc
 		}
 		bool operator != (const xmatrix &m) const
 		{
-			const T *iter1 = _elem[0], *iter2 = m._elem[0];
+			const T *iter1 = _m[0], *iter2 = m._m[0];
 			for (int i = 9; i>0; --i) {
 				if (*iter1 != *iter2)
 					return true;
@@ -966,14 +1036,26 @@ namespace wyc
 			}
 			return false;
 		}
+		bool operator < (const xmatrix &m) const
+		{
+			const T *iter1 = _m[0], *iter2 = m._m[0];
+			for (int i = 9; i>0; --i) {
+				if (!(*iter1 < *iter2))
+					return false;
+				++iter1;
+				++iter2;
+			}
+			return true;
+		}
 
+		matrix_operator_helper(xmatrix, T)
 	};
 
 
 	template<class T>
 	struct xmatrix<T, 4, 4>
 	{
-		typedef T element_t;
+		typedef T scalar_t;
 		enum {
 			ROW = 4,
 			COL = 4,
@@ -981,7 +1063,7 @@ namespace wyc
 
 		union
 		{
-			T	_elem[4][4];
+			T	_m[4][4];
 			struct
 			{
 				T
@@ -992,129 +1074,102 @@ namespace wyc
 			};
 		};
 
-		xmatrix& operator = (const xmatrix &m)
+		xmatrix& operator = (std::initializer_list<T> li)
 		{
-			memcpy(_elem[0], m._elem[0], sizeof(T) * 16);
+			size_t cnt = li.size();
+			if (cnt > 16)
+				cnt = 16;
+			const T *src = li.begin();
+			T *dst = &this->m00;
+			for (size_t i = 0; i < cnt; ++i)
+				dst[i] = src[i];
 			return *this;
 		}
+
 		inline bool square() const
 		{
 			return true;
 		}
 		inline void identity()
 		{
-			memset(_elem[0], 0, sizeof(_elem));
+			memset(_m[0], 0, sizeof(_m));
 			m00 = m11 = m22 = m33 = 1;
 		}
+
 		inline T* data()
 		{
-			return _elem[0];
+			return _m[0];
 		}
 		inline const T* data() const
 		{
-			return _elem[0];
+			return _m[0];
 		}
-		inline void set(unsigned r, unsigned c, T val)
+
+		inline T* operator [] (unsigned r)
 		{
-			if (r<4 && c<4)
-				_elem[r][c] = val;
+			assert(r < 4);
+			return _m[r];
 		}
-		inline void get(unsigned r, unsigned c, T &val) const
+		inline const T* operator [] (unsigned r) const
 		{
-			if (r<4 && c<4)
-				val = _elem[r][c];
+			assert(r < 4);
+			return _m[r];
 		}
-		inline T operator () (unsigned r, unsigned c) const
+		inline T& operator() (unsigned r, unsigned c)
 		{
-			assert(r<4 && c<4);
-			return _elem[r][c];
+			assert(r < 4 && c < 4);
+			return _m[r][c];
 		}
-		inline T& operator () (unsigned r, unsigned c)
+		inline T operator() (unsigned r, unsigned c) const
 		{
-			assert(r<4 && c<4);
-			return _elem[r][c];
+			assert(r < 4 && c < 4);
+			return _m[r][c];
 		}
-		template<int D>
-		inline void set_row(unsigned r, const xvector<T, D> &v)
+
+		inline xvector<T, 4> row(unsigned r) const
 		{
 			assert(r<4);
-			assert(D>3);
-			T *row = _elem[r];
+			return xvector<T, 4>({ _m[r][0], _m[r][1], _m[r][2], _m[r][3] });
+		}
+		inline xvector<T, 4> col(unsigned c) const
+		{
+			assert(c<4);
+			return xvector<T, 4>({ _m[0][c], _m[1][c], _m[2][c], _m[3][c] });
+		}
+		inline void set_row(unsigned r, const xvector<T, 4> &v)
+		{
+			assert(r<4);
+			T *row = _m[r];
 			row[0] = v[0];
 			row[1] = v[1];
 			row[2] = v[2];
 			row[3] = v[3];
 		}
-		template<int D>
-		inline void set_col(unsigned c, const xvector<T, D> &v)
+		inline void set_col(unsigned c, const xvector<T, 4> &v)
 		{
 			assert(c<4);
-			assert(D>3);
-			_elem[0][c] = v[0];
-			_elem[1][c] = v[1];
-			_elem[2][c] = v[2];
-			_elem[3][c] = v[3];
-		}
-		inline void set_row(unsigned r, const xvector<T, 2> &v)
-		{
-			assert(r<4);
-			_elem[r][0] = v.x;
-			_elem[r][1] = v.y;
-		}
-		inline void set_col(unsigned c, const xvector<T, 2> &v)
-		{
-			assert(c<4);
-			_elem[0][c] = v.x;
-			_elem[1][c] = v.y;
+			_m[0][c] = v[0];
+			_m[1][c] = v[1];
+			_m[2][c] = v[2];
+			_m[3][c] = v[3];
 		}
 		inline void set_row(unsigned r, const xvector<T, 3> &v)
 		{
 			assert(r<4);
-			T *row = _elem[r];
-			row[0] = v.x;
-			row[1] = v.y;
-			row[2] = v.z;
+			T *row = _m[r];
+			row[0] = v[0];
+			row[1] = v[1];
+			row[2] = v[2];
 		}
 		inline void set_col(unsigned c, const xvector<T, 3> &v)
 		{
 			assert(c<4);
-			_elem[0][c] = v.x;
-			_elem[1][c] = v.y;
-			_elem[2][c] = v.z;
-		}
-		inline void get_row(unsigned r, xvector<T, 4> &v) const
-		{
-			assert(r<4);
-			const T *row = _elem[r];
-			v.set(row[0], row[1], row[2], row[3]);
-		}
-		inline void get_col(unsigned c, xvector<T, 4> &v) const
-		{
-			assert(c<4);
-			v.set(_elem[0][c], _elem[1][c], _elem[2][c], _elem[3][c]);
+			_m[0][c] = v[0];
+			_m[1][c] = v[1];
+			_m[2][c] = v[2];
 		}
 
 		inline xmatrix& operator += (const xmatrix &m)
-		{
-			return this->add(m);
-		}
-		inline xmatrix& operator -= (const xmatrix &m)
-		{
-			return this->sub(m);
-		}
-		inline xmatrix& operator *= (T val)
-		{
-			return this->scale(val);
-		}
-		inline xmatrix& operator /= (T val)
-		{
-			return this->div(val);
-		}
-		inline xmatrix& operator *= (const xmatrix &m)
-		{
-			return this->mul(m);
-		}
-		xmatrix& add(const xmatrix &m)
 		{
 			m00 += m.m00; m01 += m.m01; m02 += m.m02; m03 += m.m03;
 			m10 += m.m10; m11 += m.m11; m12 += m.m12; m13 += m.m13;
@@ -1122,15 +1177,7 @@ namespace wyc
 			m30 += m.m30; m31 += m.m31; m32 += m.m32; m33 += m.m33;
 			return *this;
 		}
-		xmatrix& add(const xmatrix &m1, const xmatrix &m2)
-		{
-			m00 = m1.m00 + m2.m00; m01 = m1.m01 + m2.m01; m02 = m1.m02 + m2.m02; m03 = m1.m03 + m2.m03;
-			m10 = m1.m10 + m2.m10; m11 = m1.m11 + m2.m11; m12 = m1.m12 + m2.m12; m13 = m1.m13 + m2.m13;
-			m20 = m1.m20 + m2.m20; m21 = m1.m21 + m2.m21; m22 = m1.m22 + m2.m22; m23 = m1.m23 + m2.m23;
-			m30 = m1.m30 + m2.m30; m31 = m1.m31 + m2.m31; m32 = m1.m32 + m2.m32; m33 = m1.m33 + m2.m33;
-			return *this;
-		}
-		xmatrix& sub(const xmatrix &m)
+		inline xmatrix& operator -= (const xmatrix &m)
 		{
 			m00 -= m.m00; m01 -= m.m01; m02 -= m.m02; m03 -= m.m03;
 			m10 -= m.m10; m11 -= m.m11; m12 -= m.m12; m13 -= m.m13;
@@ -1138,15 +1185,23 @@ namespace wyc
 			m30 -= m.m30; m31 -= m.m31; m32 -= m.m32; m33 -= m.m33;
 			return *this;
 		}
-		xmatrix& sub(const xmatrix &m1, const xmatrix &m2)
+		inline xmatrix& operator += (T val)
 		{
-			m00 = m1.m00 - m2.m00; m01 = m1.m01 - m2.m01; m02 = m1.m02 - m2.m02; m03 = m1.m03 - m2.m03;
-			m10 = m1.m10 - m2.m10; m11 = m1.m11 - m2.m11; m12 = m1.m12 - m2.m12; m13 = m1.m13 - m2.m13;
-			m20 = m1.m20 - m2.m20; m21 = m1.m21 - m2.m21; m22 = m1.m22 - m2.m22; m23 = m1.m23 - m2.m23;
-			m30 = m1.m30 - m2.m30; m31 = m1.m31 - m2.m31; m32 = m1.m32 - m2.m32; m33 = m1.m33 - m2.m33;
+			m00 += val; m01 += val; m02 += val; m03 += val;
+			m10 += val; m11 += val; m12 += val; m13 += val;
+			m20 += val; m21 += val; m22 += val; m23 += val;
+			m30 += val; m31 += val; m32 += val; m33 += val;
 			return *this;
 		}
-		xmatrix& scale(T val)
+		inline xmatrix& operator -= (T val)
+		{
+			m00 -= val; m01 -= val; m02 -= val; m03 -= val;
+			m10 -= val; m11 -= val; m12 -= val; m13 -= val;
+			m20 -= val; m21 -= val; m22 -= val; m23 -= val;
+			m30 -= val; m31 -= val; m32 -= val; m33 -= val;
+			return *this;
+		}
+		inline xmatrix& operator *= (T val)
 		{
 			m00 *= val; m01 *= val; m02 *= val; m03 *= val;
 			m10 *= val; m11 *= val; m12 *= val; m13 *= val;
@@ -1154,25 +1209,13 @@ namespace wyc
 			m30 *= val; m31 *= val; m32 *= val; m33 *= val;
 			return *this;
 		}
-		xmatrix& scale(const xmatrix &m, T val)
+		inline xmatrix& operator /= (T val)
 		{
-			m00 = m.m00*val; m01 = m.m01*val; m02 = m.m02*val; m03 = m.m03*val;
-			m10 = m.m10*val; m11 = m.m11*val; m12 = m.m12*val; m13 = m.m13*val;
-			m20 = m.m20*val; m21 = m.m21*val; m22 = m.m22*val; m23 = m.m23*val;
-			m30 = m.m30*val; m31 = m.m31*val; m32 = m.m32*val; m33 = m.m33*val;
+			T inv = T(1) / val;
+			*this *= inv;
 			return *this;
 		}
-		inline xmatrix& div(T val)
-		{
-			T inv = T(1) / val;
-			return scale(inv);
-		}
-		inline xmatrix& div(const xmatrix &m, T val)
-		{
-			T inv = T(1) / val;
-			return scale(m, inv);
-		}
-		xmatrix& mul(const xmatrix &mat)
+		inline xmatrix& operator *= (const xmatrix &mat)
 		{
 			T temp[4];
 			temp[0] = m00*mat.m00 + m01*mat.m10 + m02*mat.m20 + m03*mat.m30;
@@ -1209,6 +1252,36 @@ namespace wyc
 			m33 = temp[3];
 			return *this;
 		}
+
+		xmatrix& add(const xmatrix &m1, const xmatrix &m2)
+		{
+			m00 = m1.m00 + m2.m00; m01 = m1.m01 + m2.m01; m02 = m1.m02 + m2.m02; m03 = m1.m03 + m2.m03;
+			m10 = m1.m10 + m2.m10; m11 = m1.m11 + m2.m11; m12 = m1.m12 + m2.m12; m13 = m1.m13 + m2.m13;
+			m20 = m1.m20 + m2.m20; m21 = m1.m21 + m2.m21; m22 = m1.m22 + m2.m22; m23 = m1.m23 + m2.m23;
+			m30 = m1.m30 + m2.m30; m31 = m1.m31 + m2.m31; m32 = m1.m32 + m2.m32; m33 = m1.m33 + m2.m33;
+			return *this;
+		}
+		xmatrix& sub(const xmatrix &m1, const xmatrix &m2)
+		{
+			m00 = m1.m00 - m2.m00; m01 = m1.m01 - m2.m01; m02 = m1.m02 - m2.m02; m03 = m1.m03 - m2.m03;
+			m10 = m1.m10 - m2.m10; m11 = m1.m11 - m2.m11; m12 = m1.m12 - m2.m12; m13 = m1.m13 - m2.m13;
+			m20 = m1.m20 - m2.m20; m21 = m1.m21 - m2.m21; m22 = m1.m22 - m2.m22; m23 = m1.m23 - m2.m23;
+			m30 = m1.m30 - m2.m30; m31 = m1.m31 - m2.m31; m32 = m1.m32 - m2.m32; m33 = m1.m33 - m2.m33;
+			return *this;
+		}
+		xmatrix& scale(const xmatrix &m, T val)
+		{
+			m00 = m.m00*val; m01 = m.m01*val; m02 = m.m02*val; m03 = m.m03*val;
+			m10 = m.m10*val; m11 = m.m11*val; m12 = m.m12*val; m13 = m.m13*val;
+			m20 = m.m20*val; m21 = m.m21*val; m22 = m.m22*val; m23 = m.m23*val;
+			m30 = m.m30*val; m31 = m.m31*val; m32 = m.m32*val; m33 = m.m33*val;
+			return *this;
+		}
+		inline xmatrix& div(const xmatrix &m, T val)
+		{
+			T inv = T(1) / val;
+			return scale(m, inv);
+		}
 		xmatrix& mul(const xmatrix &m1, const xmatrix &m2)
 		{
 			m00 = m1.m00*m2.m00 + m1.m01*m2.m10 + m1.m02*m2.m20 + m1.m03*m2.m30;
@@ -1229,6 +1302,7 @@ namespace wyc
 			m33 = m1.m30*m2.m03 + m1.m31*m2.m13 + m1.m32*m2.m23 + m1.m33*m2.m33;
 			return *this;
 		}
+
 		xmatrix& transpose()
 		{
 			SWAP(m01, m10);
@@ -1239,36 +1313,82 @@ namespace wyc
 			SWAP(m23, m32);
 			return *this;
 		}
-		xmatrix& transpose(const xmatrix &m)
+		xmatrix& transpose_of(const xmatrix &m)
 		{
+			if (&m == this)
+				return this->transpose();
 			m00 = m.m00; m01 = m.m10; m02 = m.m20; m03 = m.m30;
 			m10 = m.m01; m11 = m.m11; m12 = m.m21; m13 = m.m31;
 			m20 = m.m02; m21 = m.m12; m22 = m.m22; m23 = m.m32;
 			m30 = m.m03; m31 = m.m13; m32 = m.m23; m33 = m.m33;
 			return *this;
 		}
-		T det() const
+
+		// get minor(0,c) sub matrix
+		void minor_matrix(xmatrix<T, 3, 3> &m, int c) const
+		{
+			T *dst = m._m[0];
+			const T *src = _m[1];;
+			unsigned i, j;
+			for (i = 1; i<4; ++i)
+			{
+				for (j = 0; j<4; ++j)
+				{
+					if (j != c)
+						*dst++ = *src;
+					++src;
+				}
+			}
+		}
+		// get minor(r,c) sub matrix
+		void minor_matrix(xmatrix<T, 3, 3> &m, int r, int c) const
+		{
+			T *dst = m._m[0];
+			const T *src;
+			unsigned i, j;
+			for (i = 0; i<4; ++i)
+			{
+				if (i == r)
+					continue;
+				src = _m[i];
+				for (j = 0; j<4; ++j)
+				{
+					if (j == c)
+						continue;
+					*dst++ = src[j];
+				}
+			}
+		}
+		T determinant() const
 		{
 			xmatrix<T, 3, 3> sub;
 			T v, r = 0;
-			const T *row = _elem[0];
+			const T *row = _m[0];
 			for (unsigned i = 0; i<4; ++i)
 			{
-				_get_sub_matrix(sub, i);
+				minor_matrix(sub, i);
 				v = (i & 1) ? (-row[i]) : (row[i]);
-				v *= sub.det();
+				v *= sub.determinant();
 				r += v;
 			}
 			return r;
 		}
+		inline bool inverse()
+		{
+			xmatrix tmp;
+			if (!tmp.inverse_of(*this))
+				return false;
+			*this = tmp;
+			return true;
+		}
 #ifdef FAST_MATRIX4_INVERSE
 		// Strassen's Method
-		// 速度很快，但舍入误差会被累积，导致结果精度降低
-		bool inverse(const xmatrix &m)
+		// faster than GJ, but lower accuracy (because of the accumulated rounding error)
+		bool inverse_of(const xmatrix &m)
 		{
 			// r0=inverse(a00)
 			double d = m.m00*m.m11 - m.m01*m.m10;
-			if (fequal(d, 0))
+			if (almost_zero(d))
 				return false;
 			d = double(1) / d;
 			double r0[4] = {
@@ -1295,7 +1415,7 @@ namespace wyc
 				r3[2] -= m.m32, r3[3] -= m.m33,
 				// r5=inverse(r4)
 				d = r3[0] * r3[3] - r3[1] * r3[2];
-			if (fequal(d, 0))
+			if (almost_zero(d))
 				return false;
 			d = 1 / d;
 			double tmp = r3[0];
@@ -1321,49 +1441,50 @@ namespace wyc
 			return true;
 		}
 #else
-		bool inverse(const xmatrix &m)
+		bool inverse_of(const xmatrix &m)
 		{
 			T adj[16], *iter;
 			double d = 0;
 			iter = adj;
 			xmatrix<T, 3, 3> sub;
-			const T *src = m._elem[0];
+			const T *src = m._m[0];
 			int i, j;
-			// 计算行列式
+			// the determinant
 			for (i = 0; i<4; ++i)
 			{
-				m._get_sub_matrix(sub, i);
-				*iter = sub.det();
+				m.minor_matrix(sub, i);
+				*iter = sub.determinant();
 				if (i & 1)
 					*iter = -*iter;
 				d += src[i] * (*iter);
 				++iter;
 			}
-			if (fequal(d, 0))
+			if (almost_zero(d))
 				return false;
-			// 计算伴随矩阵
+			// adjacent matrix
 			for (i = 1; i<4; ++i) {
 				for (j = 0; j<4; ++j) {
-					m._get_sub_matrix(sub, i, j);
-					*iter = sub.det();
+					m.minor_matrix(sub, i, j);
+					*iter = sub.determinant();
 					if ((i + j) & 1)
 						*iter = -*iter;
 					++iter;
 				}
 			}
-			// 计算逆阵
+			// the inverse matrix
 			iter = adj;
 			double invdet = 1 / d;
 			for (i = 0; i<4; ++i) {
 				for (j = 0; j<4; ++j)
-					_elem[j][i] = T((*iter++)*invdet);
+					_m[j][i] = T((*iter++)*invdet);
 			}
 			return true;
 		}
 #endif // FAST_MATRIX4_INVERSE
+
 		bool operator == (const xmatrix &m) const
 		{
-			const T *iter1 = _elem[0], *iter2 = m._elem[0];
+			const T *iter1 = _m[0], *iter2 = m._m[0];
 			for (int i = 16; i>0; --i) {
 				if (*iter1 != *iter2)
 					return false;
@@ -1374,7 +1495,7 @@ namespace wyc
 		}
 		bool operator != (const xmatrix &m) const
 		{
-			const T *iter1 = _elem[0], *iter2 = m._elem[0];
+			const T *iter1 = _m[0], *iter2 = m._m[0];
 			for (int i = 16; i>0; --i) {
 				if (*iter1 != *iter2)
 					return true;
@@ -1383,97 +1504,153 @@ namespace wyc
 			}
 			return false;
 		}
-		// 获取去除0行rc列后的子阵
-		void _get_sub_matrix(xmatrix<T, 3, 3> &m, int rc) const
+		bool operator < (const xmatrix &m) const
 		{
-			T *dst = m._elem[0];
-			const T *src = _elem[1];;
-			unsigned i, j;
-			for (i = 1; i<4; ++i)
-			{
-				for (j = 0; j<4; ++j)
-				{
-					if (j != rc)
-						*dst++ = *src;
-					++src;
-				}
+			const T *iter1 = _m[0], *iter2 = m._m[0];
+			for (int i = 16; i>0; --i) {
+				if (!(*iter1 < *iter2))
+					return false;
+				++iter1;
+				++iter2;
 			}
+			return true;
 		}
-		// 获取去除第rr行rc列后的子阵
-		void _get_sub_matrix(xmatrix<T, 3, 3> &m, int rr, int rc) const
-		{
-			T *dst = m._elem[0];
-			const T *src;
-			unsigned i, j;
-			for (i = 0; i<4; ++i)
-			{
-				if (i == rr)
-					continue;
-				src = _elem[i];
-				for (j = 0; j<4; ++j)
-				{
-					if (j == rc)
-						continue;
-					*dst++ = src[j];
-				}
-			}
-		}
+
+		matrix_operator_helper(xmatrix, T)
 	};
 
-	template<typename T, int R, int C>
-	inline xmatrix<T, R, C> operator + (const xmatrix<T, R, C> &m1, const xmatrix<T, R, C> &m2)
+	//-----------------------------------------------------------------------------------
+	// matrix vector multiplication
+	//-----------------------------------------------------------------------------------
+
+	template<class T, int R, int C>
+	inline xvector<T, C> operator * (const xvector<T, R> &v, const xmatrix<T, R, C> &m)
 	{
-		xmatrix<T, R, C> ret;
-		ret.add(m1, m2);
-		return ret;
+		xvector<T, C> r;
+		T sum;
+		for (int j = 0; j < C; ++j)
+		{
+			sum = 0;
+			for (int i = 0; i < R; ++i)
+				sum += v[i]*m[i][j];
+			r[j] = sum;
+		}
+		return r;
 	}
 
-	template<typename T, int R, int C>
-	inline xmatrix<T, R, C> operator - (const xmatrix<T, R, C> &m1, const xmatrix<T, R, C> &m2)
+	template<class T, int R, int C>
+	inline xvector<T, C> operator * (const xmatrix<T, R, C> &m, const xvector<T, C> &v)
 	{
-		xmatrix<T, R, C> ret;
-		ret.sub(m1, m2);
-		return ret;
+		xvector<T, C> r;
+		T sum;
+		for (int i = 0; i < R; ++i)
+		{
+			sum = 0;
+			for (int j = 0; j < C; ++j)
+				sum += v[j]*m[i][j];
+			r[i] = sum;
+		}
+		return r;
 	}
 
-	template<typename T, int R, int C>
-	inline xmatrix<T, R, C> operator * (const xmatrix<T, R, C> &m1, const xmatrix<T, R, C> &m2)
+	template<class T>
+	xvector<T, 2> operator * (const xvector<T, 2> &v, const xmatrix<T, 2, 2> &m)
 	{
-		xmatrix<T, R, C> ret;
-		ret.mul(m1, m2);
-		return ret;
+		xvector<T, 2> r;
+		r.x = v.x*m.m00 + v.y*m.m10;
+		r.y = v.x*m.m01 + v.y*m.m11;
+		return r;
 	}
 
-	template<typename T, int R, int C>
-	inline xmatrix<T, R, C> operator * (const xmatrix<T, R, C> &m1, T val)
+	template<class T>
+	xvector<T, 2> operator * (const xmatrix<T, 2, 2> &m, const xvector<T, 2> &v)
 	{
-		xmatrix<T, R, C> ret;
-		ret.scale(m1, val);
-		return ret;
+		xvector<T, 2> r;
+		r.x = v.x*m.m00 + v.y*m.m01;
+		r.y = v.x*m.m10 + v.y*m.m11;
+		return r;
 	}
 
-	template<typename T, int R, int C>
-	inline xmatrix<T, R, C> operator * (T val, const xmatrix<T, R, C> &m1)
+	template<class T>
+	xvector<T, 2> operator * (const xvector<T, 2> &v, const xmatrix<T, 3, 3> &m)
 	{
-		xmatrix<T, R, C> ret;
-		ret.scale(m1, val);
-		return ret;
+		xvector<T, 2> r;
+		r.x = v.x*m.m00 + v.y*m.m10;
+		r.y = v.x*m.m01 + v.y*m.m11;
+		return r;
 	}
 
-	template<typename T, int R, int C>
-	inline xmatrix<T, R, C> operator / (const xmatrix<T, R, C> &m1, T val)
+	template<class T>
+	xvector<T, 2> operator * (const xmatrix<T, 3, 3> &m, const xvector<T, 2> &v)
 	{
-		xmatrix<T, R, C> ret;
-		ret.div(m1, val);
-		return ret;
+		xvector<T, 2> r;
+		r.x = v.x*m.m00 + v.y*m.m01;
+		r.y = v.x*m.m10 + v.y*m.m11;
+		return r;
 	}
 
-	template<typename T>
-	void matrix_test()
+	template<class T>
+	xvector<T, 3> operator * (const xvector<T, 3> &v, const xmatrix<T, 3, 3> &m)
 	{
-		typedef typename T::element_t elem_t;
-		T mat;
-		mat.identity();
+		xvector<T, 3> r;
+		r.x = v.x*m.m00 + v.y*m.m10 + v.z*m.m20;
+		r.y = v.x*m.m01 + v.y*m.m11 + v.z*m.m21;
+		r.z = v.x*m.m02 + v.y*m.m12 + v.z*m.m22;
+		return r;
+	}
+
+	template<class T>
+	xvector<T, 3> operator * (const xmatrix<T, 3, 3> &m, const xvector<T, 3> &v)
+	{
+		xvector<T, 3> r;
+		r.x = v.x*m.m00 + v.y*m.m01 + v.z*m.m02;
+		r.y = v.x*m.m10 + v.y*m.m11 + v.z*m.m12;
+		r.z = v.x*m.m20 + v.y*m.m21 + v.z*m.m22;
+		return r;
+	}
+
+	template<class T>
+	xvector<T, 4> operator * (const xvector<T, 3> &v, const xmatrix<T, 4, 4> &m)
+	{
+		xvector<T, 4> r;
+		r.x = v.x*m.m00 + v.y*m.m10 + v.z*m.m20 + m.m30;
+		r.y = v.x*m.m01 + v.y*m.m11 + v.z*m.m21 + m.m31;
+		r.z = v.x*m.m02 + v.y*m.m12 + v.z*m.m22 + m.m32;
+		r.w = v.x*m.m03 + v.y*m.m13 + v.z*m.m23 + m.m33;
+		return r;
+	}
+
+	template<class T>
+	xvector<T, 4> operator * (const xmatrix<T, 4, 4> &m, const xvector<T, 3> &v)
+	{
+		xvector<T, 4> r;
+		r.x = v.x*m.m00 + v.y*m.m01 + v.z*m.m02 + m.m03;
+		r.y = v.x*m.m10 + v.y*m.m11 + v.z*m.m12 + m.m13;
+		r.z = v.x*m.m20 + v.y*m.m21 + v.z*m.m22 + m.m23;
+		r.w = v.x*m.m30 + v.y*m.m31 + v.z*m.m32 + m.m33;
+		return r;
+	}
+
+	template<class T>
+	inline xvector<T, 4> operator * (const xvector<T, 4> &v, const xmatrix<T, 4, 4> &m)
+	{
+		xvector<T, 4> r;
+		r.x = v.x*m.m00 + v.y*m.m10 + v.z*m.m20 + v.w*m.m30;
+		r.y = v.x*m.m01 + v.y*m.m11 + v.z*m.m21 + v.w*m.m31;
+		r.z = v.x*m.m02 + v.y*m.m12 + v.z*m.m22 + v.w*m.m32;
+		r.w = v.x*m.m03 + v.y*m.m13 + v.z*m.m23 + v.w*m.m33;
+		return r;
+	}
+
+	template<class T>
+	inline xvector<T, 4> operator * (const xmatrix<T, 4, 4> &m, const xvector<T, 4> &v)
+	{
+		xvector<T, 4> r;
+		r.x = v.x*m.m00 + v.y*m.m01 + v.z*m.m02 + v.w*m.m03;
+		r.y = v.x*m.m10 + v.y*m.m11 + v.z*m.m12 + v.w*m.m13;
+		r.z = v.x*m.m20 + v.y*m.m21 + v.z*m.m22 + v.w*m.m23;
+		r.w = v.x*m.m30 + v.y*m.m31 + v.z*m.m32 + v.w*m.m33;
+		return r;
 	}
 
 } // endof namespace wyc

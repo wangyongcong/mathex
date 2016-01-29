@@ -14,55 +14,59 @@ namespace wyc
 		{\
 			return sqrt(length2());\
 		}\
-		friend inline T operator+(const T &vec, E scalar)\
+		friend inline T operator + (const T &vec, E scalar)\
 		{\
 			T res(vec); res += scalar; return res;\
 		}\
-		friend inline T operator+(E scalar, const T &vec)\
+		friend inline T operator + (E scalar, const T &vec)\
 		{\
 			return vec + scalar;\
 		}\
-		friend inline T operator-(const T &vec, E scalar)\
+		friend inline T operator - (const T &vec, E scalar)\
 		{\
 			return vec + (-scalar);\
 		}\
-		friend inline T operator*(const T &vec, E scalar)\
+		friend inline T operator * (const T &vec, E scalar)\
 		{\
 			T res(vec); res *= scalar; return res;\
 		}\
-		friend inline T operator*(E scalar, const T &vec)\
+		friend inline T operator * (E scalar, const T &vec)\
 		{\
 			return vec * scalar;\
 		}\
-		friend inline T operator/(const T &vec, E scalar)\
+		friend inline T operator / (const T &vec, E scalar)\
 		{\
 			T res(vec); res /= scalar; return res;\
 		}\
-		friend inline T operator+(T const& lhs, T const& rhs)\
+		friend inline T operator + (T const& lhs, T const& rhs)\
 		{\
 			T res(lhs); res += rhs; return res;\
 		}\
-		friend inline T operator-(T const& lhs, T const& rhs)\
+		friend inline T operator - (T const& lhs, T const& rhs)\
 		{\
 			T res(lhs); res -= rhs; return res;\
 		}\
-		friend inline T operator*(T const& lhs, T const& rhs)\
+		friend inline T operator * (T const& lhs, T const& rhs)\
 		{\
 			T res(lhs); res *= rhs; return res;\
 		}\
-		friend inline T operator/(T const& lhs, T const& rhs)\
+		friend inline T operator / (T const& lhs, T const& rhs)\
 		{\
 			T res(lhs); res /= rhs; return res;\
 		}\
-		friend inline bool operator>=(T const& lhs, T const& rhs)\
+		friend inline E operator ^ (T const& lhs, T const& rhs)\
+		{\
+			return lhs.dot(rhs);\
+		}\
+		friend inline bool operator >= (T const& lhs, T const& rhs)\
 		{\
 			return !(lhs <  rhs);\
 		}\
-		friend inline bool operator<=(T const& lhs, T const& rhs)\
+		friend inline bool operator <= (T const& lhs, T const& rhs)\
 		{\
 			return !(rhs <  lhs);\
 		}\
-		friend inline bool operator>(T const& lhs, T const& rhs)\
+		friend inline bool operator > (T const& lhs, T const& rhs)\
 		{\
 			return  (rhs <  lhs);\
 		}\
@@ -70,7 +74,7 @@ namespace wyc
 	template<class T, int D>
 	struct xvector
 	{
-		typedef T element_t;
+		typedef T scalar_t;
 		enum { DIMENSION = D };
 
 		T _elem[D];
@@ -238,7 +242,7 @@ namespace wyc
 	template<class T>
 	struct xvector<T, 2>
 	{
-		typedef T element_t;
+		typedef T scalar_t;
 		enum { DIMENSION = 2 };
 		T	x, y;
 		inline xvector& operator = (T val)
@@ -397,7 +401,7 @@ namespace wyc
 	template<class T>
 	struct xvector<T, 3>
 	{
-		typedef T element_t;
+		typedef T scalar_t;
 		enum { DIMENSION = 3 };
 		T	x, y, z;
 		inline xvector& operator = (T val)
@@ -428,6 +432,7 @@ namespace wyc
 			x = v.x;
 			y = v.y;
 			z = 0;
+			return *this;
 		}
 		template<>
 		xvector& operator = (const xvector<T, 4> &v)
@@ -435,6 +440,7 @@ namespace wyc
 			x = v.x;
 			y = v.y;
 			z = v.z;
+			return *this;
 		}
 		inline void zero()
 		{
@@ -593,9 +599,10 @@ namespace wyc
 	template<class T>
 	struct xvector<T, 4>
 	{
-		typedef T element_t;
+		typedef T scalar_t;
 		enum { DIMENSION = 4 };
 		T	x, y, z, w;
+
 		inline xvector& operator = (T val)
 		{
 			x = y = z = w = val;
@@ -626,6 +633,7 @@ namespace wyc
 			y = v.y;
 			z = 0;
 			w = 1;
+			return *this;
 		}
 		template<>
 		xvector& operator = (const xvector<T, 3> &v)
@@ -634,6 +642,7 @@ namespace wyc
 			y = v.y;
 			z = v.z;
 			w = 1;
+			return *this;
 		}
 		inline void zero()
 		{
@@ -810,51 +819,18 @@ namespace wyc
 		vector_operator_helper(xvector, T)
 	};
 
-
-	template<typename T>
-	void vector_test()
+	template <class T>
+	inline T operator ^ (const xvector<T, 4> &v4, const xvector<T, 3> &v3)
 	{
-		typedef typename T::element_t elem_t;
-		const elem_t pi = elem_t(3.1415926), e = elem_t(2.718281828);
-		T v1;
-		v1.zero();
-		v1 = e;
-		v1 = { pi, e };
-		T v2 = { elem_t(1.414), elem_t(1.736) };
-		v1 += v2;
-		v1 -= v2;
-		v1 *= v2;
-		v1 /= v2;
-		T v3;
-		v3 = v1 + v2;
-		v3 = v1 - v2;
-		v3 = v1 * v2;
-		v3 = v2 / v2;
-		v1 += pi;
-		v1 -= pi;
-		v1 *= pi;
-		v1 /= pi;
-		v3 = v1 * pi;
-		v3 = v1 / pi;
-		v3 = pi * v1;
-		v2 += e;
-		v2.reverse();
-		v2.reciprocal();
-		elem_t len;
-		len = v2.length2();
-		len = v2.length();
-		if (len)
-			v2.normalize();
-		v1.dot(v2);
-		v1.cross(v2);
-		bool b;
-		b = v1 == v2;
-		b = v1 != v2;
-		b = v1 < v2;
-		b = v1 > v2;
-		b = v1 <= v2;
-		b = v1 >= v2;
+		return v4.x * v3.x + v4.y * v3.y + v4.z * v3.z + v4.w;
 	}
+
+	template <class T>
+	inline T operator ^ (const xvector<T, 3> &v3, const xvector<T, 4> &v4)
+	{
+		return v4 ^ v3;
+	}
+
 
 } // endof namespace wyc
 
